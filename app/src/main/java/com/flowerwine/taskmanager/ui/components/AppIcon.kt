@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.Color
@@ -26,10 +27,11 @@ fun AppIcon(
     packageName: String,
     displayName: String,
     modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
 ) {
     val context = LocalContext.current
+    val dataSource = remember(context) { InstalledAppsDataSource(context) }
     val imageBitmap = remember(packageName) {
-        val dataSource = InstalledAppsDataSource(context)
         val drawable = dataSource.getApplicationInfo(packageName)?.loadIcon(context.packageManager)
         drawable?.toBitmap()?.asImageBitmap()
     }
@@ -39,13 +41,13 @@ fun AppIcon(
             bitmap = imageBitmap,
             contentDescription = displayName,
             modifier = modifier
-                .size(48.dp)
+                .size(size)
                 .clip(RoundedCornerShape(14.dp)),
         )
     } else {
         Box(
             modifier = modifier
-                .size(48.dp)
+                .size(size)
                 .clip(RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,

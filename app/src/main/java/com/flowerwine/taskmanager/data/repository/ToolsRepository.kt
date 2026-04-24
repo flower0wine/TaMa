@@ -21,7 +21,11 @@ class ToolsRepository(
     suspend fun getDashboard(): ToolsDashboard {
         val permissionStatus = permissionStatusDataSource.getPermissionStatus()
         val snapshot = deviceStatusDataSource.readSnapshot()
-        val appDashboard = appsRepository.getDashboard(AppSortOption.StorageHeavy, "")
+        val appDashboard = appsRepository.getDashboard(
+            sortOption = AppSortOption.StorageHeavy,
+            query = "",
+            includeSystemApps = false,
+        )
 
         return ToolsDashboard(
             recommendations = buildToolRecommendationsUseCase(

@@ -26,18 +26,35 @@ class AppsRepository(
 ) {
 
     val selectedSortOption: Flow<AppSortOption> = preferencesRepository.appSort
+    val includeSystemApps: Flow<Boolean> = preferencesRepository.includeSystemApps
 
     suspend fun setSortOption(sortOption: AppSortOption) {
         preferencesRepository.setAppSort(sortOption)
     }
 
-    suspend fun getDashboard(sortOption: AppSortOption, query: String): AppsDashboard {
+    suspend fun setIncludeSystemApps(includeSystemApps: Boolean) {
+        preferencesRepository.setIncludeSystemApps(includeSystemApps)
+    }
+
+    suspend fun getDashboard(
+        sortOption: AppSortOption,
+        query: String,
+        includeSystemApps: Boolean,
+    ): AppsDashboard {
         val permissionGranted = permissionStatusDataSource.hasUsageAccess()
-        val installedApps = installedAppsDataSource.getLauncherApps()
+        val installedApps = installedAppsDataSource.getInstalledApps()
         val usageMap = usageStatsDataSource.queryUsageRecords(startOfToday(), System.currentTimeMillis())
             .associateBy { it.packageName }
 
-        val appItems = installedApps.map { installedApp ->
+        val visibleInstalledApps = installedApps
+            .asSequence()
+            .filter { includeSystemApps || !it.isSystemApp }
+            .toList()
+        val visiblePackages = visibleInstalledApps.mapTo(mutableSetOf()) { it.packageName }
+
+        val appItems = visibleInstalledApps
+            .asSequence()
+            .map { installedApp ->
             val usage = usageMap[installedApp.packageName]
             val storageBytes = if (permissionGranted) deviceStatusDataSource.queryAppStorageBytes(installedApp.packageName) else null
             val networkBytes = if (permissionGranted) deviceStatusDataSource.queryAppNetworkBytes(installedApp.uid) else null
@@ -49,6 +66,7 @@ class AppsRepository(
             AppListItem(
                 packageName = installedApp.packageName,
                 displayName = installedApp.displayName,
+                isSystemApp = installedApp.isSystemApp,
                 usageLabel = formatUsageDuration(usage?.totalForegroundTimeMillis ?: 0L),
                 lastUsedLabel = usage?.lastTimeUsed
                     ?.takeIf { it > 0L }
@@ -58,10 +76,12 @@ class AppsRepository(
                 networkLabel = networkBytes?.let(::formatBytes),
                 score = score,
             )
-        }.filter { query.isBlank() || it.displayName.contains(query, ignoreCase = true) }
+        }
+            .filter { query.isBlank() || it.displayName.contains(query, ignoreCase = true) }
             .sortedWith(compareByDescending<AppListItem> { it.score }.thenBy { it.displayName.lowercase() })
+            .toList()
 
-        val activeRecords = usageMap.values.filter { it.totalForegroundTimeMillis > 0 }
+        val activeRecords = usageMap.values.filter { it.totalForegroundTimeMillis > 0 && it.packageName in visiblePackages }
         val selectedApp = appItems.firstOrNull()?.let { item ->
             SelectedAppSummary(
                 packageName = item.packageName,
@@ -75,6 +95,7 @@ class AppsRepository(
 
         return AppsDashboard(
             sortOption = sortOption,
+            includeSystemApps = includeSystemApps,
             overview = AppOverviewSummary(
                 activeAppsLabel = activeRecords.size.toString(),
                 totalUsageLabel = formatUsageDuration(activeRecords.sumOf { it.totalForegroundTimeMillis }),

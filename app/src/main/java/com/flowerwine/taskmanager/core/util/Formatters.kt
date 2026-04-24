@@ -19,6 +19,19 @@ fun formatBytes(bytes: Long): String {
     }
 }
 
+fun formatBytesDecimal(bytes: Long): String {
+    if (bytes < 0) return "待获取"
+    val kb = 1000f
+    val mb = kb * 1000
+    val gb = mb * 1000
+    return when {
+        bytes >= gb -> "${oneDecimal.format(bytes / gb)} GB"
+        bytes >= mb -> "${oneDecimal.format(bytes / mb)} MB"
+        bytes >= kb -> "${oneDecimal.format(bytes / kb)} KB"
+        else -> "$bytes B"
+    }
+}
+
 fun formatUsageDuration(millis: Long): String {
     if (millis <= 0) return "0 分钟"
     val hours = TimeUnit.MILLISECONDS.toHours(millis)
@@ -26,6 +39,16 @@ fun formatUsageDuration(millis: Long): String {
     return when {
         hours > 0 -> "${hours}小时${minutes}分钟"
         else -> "${minutes.coerceAtLeast(1)} 分钟"
+    }
+}
+
+fun formatCompactUsageDuration(millis: Long): String {
+    if (millis <= 0) return "0m"
+    val hours = TimeUnit.MILLISECONDS.toHours(millis)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
+    return when {
+        hours > 0 -> "${hours}h${minutes}m"
+        else -> "${minutes.coerceAtLeast(1)}m"
     }
 }
 

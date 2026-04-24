@@ -10,6 +10,7 @@ data class InstalledApp(
     val packageName: String,
     val displayName: String,
     val uid: Int,
+    val isSystemApp: Boolean,
 )
 
 class InstalledAppsDataSource(private val context: Context) {
@@ -31,10 +32,35 @@ class InstalledAppsDataSource(private val context: Context) {
                     packageName = activityInfo.packageName,
                     displayName = resolveInfo.loadLabel(packageManager).toString(),
                     uid = activityInfo.applicationInfo.uid,
+                    isSystemApp = activityInfo.applicationInfo.isSystemApp(),
                 )
             }
             .distinctBy { it.packageName }
             .sortedBy { it.displayName.lowercase() }
+    }
+
+    fun getInstalledApps(): List<InstalledApp> {
+        val applications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getInstalledApplications(0)
+        }
+
+        return applications
+            .asSequence()
+            .filter { packageManager.getLaunchIntentForPackage(it.packageName) != null }
+            .map { applicationInfo ->
+                InstalledApp(
+                    packageName = applicationInfo.packageName,
+                    displayName = packageManager.getApplicationLabel(applicationInfo).toString(),
+                    uid = applicationInfo.uid,
+                    isSystemApp = applicationInfo.isSystemApp(),
+                )
+            }
+            .distinctBy { it.packageName }
+            .sortedBy { it.displayName.lowercase() }
+            .toList()
     }
 
     fun getAppLabel(packageName: String): String {
@@ -54,4 +80,9 @@ class InstalledAppsDataSource(private val context: Context) {
             }
         }.getOrNull()
     }
+}
+
+private fun ApplicationInfo.isSystemApp(): Boolean {
+    val systemFlags = ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+    return (flags and systemFlags) != 0
 }

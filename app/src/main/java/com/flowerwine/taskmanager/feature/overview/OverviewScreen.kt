@@ -17,9 +17,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.SignalCellularAlt
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -118,17 +124,22 @@ fun OverviewScreen(state: OverviewUiState) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "内存状态",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Icon(
-                            Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Memory,
+                                contentDescription = null,
+                                tint = Color(0xFF3B82F6),
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = "内存状态",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -161,7 +172,7 @@ fun OverviewScreen(state: OverviewUiState) {
                         }
                     }
                     LinearProgressIndicator(
-                        progress = { 0.65f },
+                        progress = { dashboard.memory.progress ?: 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -170,30 +181,36 @@ fun OverviewScreen(state: OverviewUiState) {
                         trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         strokeCap = StrokeCap.Round,
                     )
-                    Text(
-                        text = "已用 5.2 GB (65%)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    dashboard.memory.supportingLabel?.let { supportingLabel ->
                         Text(
-                            text = "📉",
+                            text = supportingLabel,
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            text = "过去30分钟持续下降",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF3B82F6),
-                            fontWeight = FontWeight.Medium,
-                        )
+                    }
+                    dashboard.memory.trend?.let { trend ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = trend.icon,
+                                contentDescription = null,
+                                tint = Color(0xFF3B82F6),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = trend.label,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF3B82F6),
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
                 Column(
@@ -210,17 +227,22 @@ fun OverviewScreen(state: OverviewUiState) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "电池与温度",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Icon(
-                            Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.BatteryChargingFull,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = "电池与温度",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +268,7 @@ fun OverviewScreen(state: OverviewUiState) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "39.8°C",
+                                text = dashboard.battery.secondaryLabel,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFFFF7A00),
@@ -262,12 +284,14 @@ fun OverviewScreen(state: OverviewUiState) {
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "⚠️",
-                            style = MaterialTheme.typography.bodySmall,
+                        Icon(
+                            imageVector = Icons.Outlined.Thermostat,
+                            contentDescription = null,
+                            tint = Color(0xFFFF7A00),
+                            modifier = Modifier.size(16.dp),
                         )
                         Text(
-                            text = "热状态：注意",
+                            text = dashboard.battery.supportingLabel ?: "热状态：待获取",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFF7A00),
                             fontWeight = FontWeight.Medium,
@@ -317,17 +341,22 @@ fun OverviewScreen(state: OverviewUiState) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "今日流量",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Icon(
-                            Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Wifi,
+                                contentDescription = null,
+                                tint = Color(0xFF3B82F6),
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = "今日流量",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -341,7 +370,12 @@ fun OverviewScreen(state: OverviewUiState) {
                                 .background(Color(0xFF3B82F6).copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(text = "📶", style = MaterialTheme.typography.bodySmall)
+                            Icon(
+                                imageVector = Icons.Outlined.Wifi,
+                                contentDescription = null,
+                                tint = Color(0xFF3B82F6),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         Column {
                             Text(
@@ -350,7 +384,7 @@ fun OverviewScreen(state: OverviewUiState) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "2.34 GB",
+                                text = dashboard.network.primaryLabel,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF3B82F6),
@@ -369,7 +403,12 @@ fun OverviewScreen(state: OverviewUiState) {
                                 .background(Color(0xFF10B981).copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(text = "📡", style = MaterialTheme.typography.bodySmall)
+                            Icon(
+                                imageVector = Icons.Outlined.SignalCellularAlt,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         Column {
                             Text(
@@ -378,7 +417,7 @@ fun OverviewScreen(state: OverviewUiState) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "1.18 GB",
+                                text = dashboard.network.secondaryLabel,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF10B981),
@@ -400,17 +439,22 @@ fun OverviewScreen(state: OverviewUiState) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "存储空间",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Icon(
-                            Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Storage,
+                                contentDescription = null,
+                                tint = Color(0xFF8B5CF6),
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = "存储空间",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -423,7 +467,7 @@ fun OverviewScreen(state: OverviewUiState) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "72.6 GB",
+                                text = dashboard.storage.primaryLabel,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF8B5CF6),
@@ -436,14 +480,14 @@ fun OverviewScreen(state: OverviewUiState) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                text = "55.4 GB",
+                                text = dashboard.storage.secondaryLabel,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
                     LinearProgressIndicator(
-                        progress = { 0.56f },
+                        progress = { dashboard.storage.progress ?: 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -452,64 +496,14 @@ fun OverviewScreen(state: OverviewUiState) {
                         trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         strokeCap = StrokeCap.Round,
                     )
-                    Text(
-                        text = "总共 128 GB (已用 56%)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFFF4E6))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF7A00).copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(text = "🌡️", style = MaterialTheme.typography.titleMedium)
-                        }
+                    dashboard.storage.supportingLabel?.let { supportingLabel ->
                         Text(
-                            text = "当前建议",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            text = supportingLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Text(
-                        text = "查看建议",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFFF7A00),
-                        fontWeight = FontWeight.SemiBold,
-                    )
                 }
-                Text(
-                    text = "温度偏高，建议停止充电或边充边玩。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = "长时间高负载可能影响设备性能和电池寿命。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
         item {

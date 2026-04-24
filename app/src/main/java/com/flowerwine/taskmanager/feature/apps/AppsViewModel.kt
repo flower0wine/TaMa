@@ -8,6 +8,7 @@ import com.flowerwine.taskmanager.data.repository.AppsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -26,8 +27,13 @@ class AppsViewModel(
 
     init {
         viewModelScope.launch {
-            appsRepository.selectedSortOption.collectLatest { sortOption ->
-                load(sortOption, _uiState.value.query)
+            combine(
+                appsRepository.selectedSortOption,
+                appsRepository.includeSystemApps,
+            ) { sortOption, includeSystemApps ->
+                sortOption to includeSystemApps
+            }.collectLatest { (sortOption, includeSystemApps) ->
+                load(sortOption, _uiState.value.query, includeSystemApps)
             }
         }
     }
@@ -35,7 +41,11 @@ class AppsViewModel(
     fun onQueryChanged(query: String) {
         _uiState.value = _uiState.value.copy(query = query)
         viewModelScope.launch {
-            load(_uiState.value.dashboard?.sortOption ?: AppSortOption.MostUsed, query)
+            load(
+                _uiState.value.dashboard?.sortOption ?: AppSortOption.MostUsed,
+                query,
+                _uiState.value.dashboard?.includeSystemApps ?: false,
+            )
         }
     }
 
@@ -45,12 +55,18 @@ class AppsViewModel(
         }
     }
 
-    private suspend fun load(sortOption: AppSortOption, query: String) {
+    fun onIncludeSystemAppsChanged(includeSystemApps: Boolean) {
+        viewModelScope.launch {
+            appsRepository.setIncludeSystemApps(includeSystemApps)
+        }
+    }
+
+    private suspend fun load(sortOption: AppSortOption, query: String, includeSystemApps: Boolean) {
         _uiState.value = _uiState.value.copy(isLoading = true)
         _uiState.value = AppsUiState(
             query = query,
             isLoading = false,
-            dashboard = appsRepository.getDashboard(sortOption, query),
+            dashboard = appsRepository.getDashboard(sortOption, query, includeSystemApps),
         )
     }
 }

@@ -1,5 +1,13 @@
 package com.flowerwine.taskmanager.data.repository
 
+import android.os.PowerManager
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingFlat
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.WarningAmber
 import com.flowerwine.taskmanager.core.model.AnalysisDashboard
 import com.flowerwine.taskmanager.core.model.AnalysisRange
 import com.flowerwine.taskmanager.core.model.AppListItem
@@ -8,9 +16,13 @@ import com.flowerwine.taskmanager.core.model.ChartPoint
 import com.flowerwine.taskmanager.core.model.InsightCard
 import com.flowerwine.taskmanager.core.model.MetricAccent
 import com.flowerwine.taskmanager.core.model.MetricCardValue
+import com.flowerwine.taskmanager.core.model.MetricTrend
 import com.flowerwine.taskmanager.core.model.OverviewDashboard
 import com.flowerwine.taskmanager.core.model.UsageSlice
 import com.flowerwine.taskmanager.core.util.formatBytes
+import com.flowerwine.taskmanager.core.util.formatBytesDecimal
+import com.flowerwine.taskmanager.core.util.formatCompactUsageDuration
+import com.flowerwine.taskmanager.core.util.formatPercentage
 import com.flowerwine.taskmanager.core.util.formatRelativeMinutes
 import com.flowerwine.taskmanager.core.util.formatTemperature
 import com.flowerwine.taskmanager.core.util.formatUsageDuration
@@ -19,16 +31,20 @@ import com.flowerwine.taskmanager.data.local.SnapshotStore
 import com.flowerwine.taskmanager.data.preferences.UserPreferencesRepository
 import com.flowerwine.taskmanager.data.system.DeviceSnapshot
 import com.flowerwine.taskmanager.data.system.DeviceStatusDataSource
+import com.flowerwine.taskmanager.data.system.InstalledAppsDataSource
 import com.flowerwine.taskmanager.data.system.PermissionStatusDataSource
 import com.flowerwine.taskmanager.data.system.UsageStatsDataSource
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.TimeUnit
+import kotlin.math.absoluteValue
 import kotlin.math.roundToLong
 
 class DeviceRepository(
     private val snapshotStore: SnapshotStore,
     private val deviceStatusDataSource: DeviceStatusDataSource,
+    private val installedAppsDataSource: InstalledAppsDataSource,
     private val usageStatsDataSource: UsageStatsDataSource,
     private val permissionStatusDataSource: PermissionStatusDataSource,
     private val preferencesRepository: UserPreferencesRepository,
@@ -49,43 +65,57 @@ class DeviceRepository(
 
     suspend fun getOverviewDashboard(): OverviewDashboard {
         val snapshot = captureSnapshot()
+        val recentSnapshots = snapshotStore.getSince(System.currentTimeMillis() - ThirtyMinutesMillis)
         val permissions = permissionStatusDataSource.getPermissionStatus()
+        val launcherApps = installedAppsDataSource.getLauncherApps()
+        val launcherAppsByPackage = launcherApps.associateBy { it.packageName }
         val usageRecords = usageStatsDataSource.queryUsageRecords(startOfToday(), System.currentTimeMillis())
-        val topApps = usageRecords.take(3).map { record ->
-            AppListItem(
-                packageName = record.packageName,
-                displayName = record.packageName.substringAfterLast('.'),
-                usageLabel = formatUsageDuration(record.totalForegroundTimeMillis),
-                lastUsedLabel = formatRelativeMinutes(System.currentTimeMillis() - record.lastTimeUsed),
-                storageLabel = null,
-                networkLabel = null,
-                score = record.totalForegroundTimeMillis,
-            )
-        }
+        val topApps = usageRecords
+            .mapNotNull { record ->
+                val launcherApp = launcherAppsByPackage[record.packageName] ?: return@mapNotNull null
+                AppListItem(
+                    packageName = record.packageName,
+                    displayName = launcherApp.displayName,
+                    isSystemApp = launcherApp.isSystemApp,
+                    usageLabel = formatUsageDuration(record.totalForegroundTimeMillis),
+                    lastUsedLabel = formatRelativeMinutes(System.currentTimeMillis() - record.lastTimeUsed),
+                    storageLabel = null,
+                    networkLabel = null,
+                    score = record.totalForegroundTimeMillis,
+                )
+            }
+            .take(3)
 
         return OverviewDashboard(
             memory = MetricCardValue(
                 title = "内存状态",
-                primaryLabel = formatBytes(snapshot.availableMemoryBytes),
-                secondaryLabel = "总内存 ${formatBytes(snapshot.totalMemoryBytes)}",
+                primaryLabel = formatBytesDecimal(snapshot.availableMemoryBytes),
+                secondaryLabel = formatBytesDecimal(snapshot.totalMemoryBytes),
+                supportingLabel = "已用 ${formatBytesDecimal(snapshot.memoryUsedBytes)} (${formatPercentage(snapshot.memoryUsagePercent)})",
+                progress = snapshot.memoryUsageRatio,
+                trend = buildMemoryTrend(recentSnapshots),
                 accent = MetricAccent.Blue,
             ),
             battery = MetricCardValue(
                 title = "电池与温度",
                 primaryLabel = "${snapshot.batteryLevelPercent}%",
                 secondaryLabel = formatTemperature(snapshot.batteryTemperatureCelsius),
+                supportingLabel = buildThermalStatusLabel(snapshot.thermalStatus),
                 accent = if ((snapshot.batteryTemperatureCelsius ?: 0f) >= 40f) MetricAccent.Orange else MetricAccent.Green,
             ),
             network = MetricCardValue(
                 title = "今日流量",
                 primaryLabel = formatBytes(snapshot.wifiBytes),
-                secondaryLabel = "移动数据 ${formatBytes(snapshot.mobileBytes)}",
+                secondaryLabel = formatBytes(snapshot.mobileBytes),
+                supportingLabel = "总计 ${formatBytes(snapshot.networkTotalBytes)}",
                 accent = MetricAccent.Green,
             ),
             storage = MetricCardValue(
                 title = "存储空间",
                 primaryLabel = formatBytes(snapshot.storageTotalBytes - snapshot.storageFreeBytes),
-                secondaryLabel = "可用 ${formatBytes(snapshot.storageFreeBytes)}",
+                secondaryLabel = formatBytes(snapshot.storageFreeBytes),
+                supportingLabel = "总共 ${formatBytes(snapshot.storageTotalBytes)} (已用 ${formatPercentage(snapshot.storageUsagePercent)})",
+                progress = snapshot.storageUsageRatio,
                 accent = MetricAccent.Purple,
             ),
             insight = buildInsight(snapshot, permissions.usageAccessGranted),
@@ -94,13 +124,62 @@ class DeviceRepository(
         )
     }
 
+    private fun buildMemoryTrend(snapshots: List<DeviceSnapshotEntity>): MetricTrend {
+        val latest = snapshots.lastOrNull()
+        val baseline = snapshots.dropLast(1).lastOrNull()
+        if (latest == null || baseline == null) {
+            return MetricTrend(
+                label = "近30分钟样本不足",
+                icon = Icons.Outlined.Info,
+            )
+        }
+
+        val delta = latest.availableMemoryBytes - baseline.availableMemoryBytes
+        val minutes = ((latest.capturedAt - baseline.capturedAt) / TimeUnit.MINUTES.toMillis(1)).coerceAtLeast(1)
+        val absDelta = formatBytesDecimal(delta.absoluteValue)
+
+        return when {
+            delta < -MemoryStableThresholdBytes -> MetricTrend(
+                label = "近${minutes}分钟下降 $absDelta",
+                icon = Icons.AutoMirrored.Outlined.TrendingDown,
+            )
+            delta > MemoryStableThresholdBytes -> MetricTrend(
+                label = "近${minutes}分钟回升 $absDelta",
+                icon = Icons.AutoMirrored.Outlined.TrendingUp,
+            )
+            else -> MetricTrend(
+                label = "近${minutes}分钟基本稳定",
+                icon = Icons.AutoMirrored.Outlined.TrendingFlat,
+            )
+        }
+    }
+
+    private fun buildThermalStatusLabel(thermalStatus: Int): String {
+        return when (thermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE -> "热状态：正常"
+            PowerManager.THERMAL_STATUS_LIGHT -> "热状态：轻微升温"
+            PowerManager.THERMAL_STATUS_MODERATE -> "热状态：注意"
+            PowerManager.THERMAL_STATUS_SEVERE -> "热状态：偏高"
+            PowerManager.THERMAL_STATUS_CRITICAL -> "热状态：严重"
+            PowerManager.THERMAL_STATUS_EMERGENCY -> "热状态：紧急"
+            PowerManager.THERMAL_STATUS_SHUTDOWN -> "热状态：接近关机"
+            else -> "热状态：待获取"
+        }
+    }
+
     suspend fun getAnalysisDashboard(range: AnalysisRange): AnalysisDashboard {
         val latestSnapshot = captureSnapshot()
         val startTime = range.startMillis()
         val snapshots = snapshotStore.getSince(startTime).ifEmpty { listOf(latestSnapshot) }
+        val launcherAppsByPackage = installedAppsDataSource.getLauncherApps().associateBy { it.packageName }
         val usageRecords = usageStatsDataSource.queryUsageRecords(startTime, System.currentTimeMillis())
-        val topUsage = usageRecords.take(4)
-        val totalUsage = topUsage.sumOf { it.totalForegroundTimeMillis }.coerceAtLeast(1L)
+        val topUsage = usageRecords
+            .mapNotNull { record ->
+                val launcherApp = launcherAppsByPackage[record.packageName] ?: return@mapNotNull null
+                record to launcherApp
+            }
+            .take(4)
+        val totalUsage = topUsage.sumOf { (record, _) -> record.totalForegroundTimeMillis }.coerceAtLeast(1L)
 
         return AnalysisDashboard(
             selectedRange = range,
@@ -117,14 +196,15 @@ class DeviceRepository(
                     secondaryValue = snapshot.mobileBytes.toFloat() / GB,
                 )
             },
-            usageDistribution = topUsage.map { record ->
+            usageDistribution = topUsage.map { (record, launcherApp) ->
                 UsageSlice(
-                    label = record.packageName.substringAfterLast('.'),
+                    packageName = record.packageName,
+                    label = launcherApp.displayName,
                     value = record.totalForegroundTimeMillis.toFloat() / totalUsage,
-                    displayValue = formatUsageDuration(record.totalForegroundTimeMillis),
+                    displayValue = formatCompactUsageDuration(record.totalForegroundTimeMillis),
                 )
             },
-            memoryAverageLabel = formatBytes(
+            memoryAverageLabel = formatBytesDecimal(
                 snapshots.map { it.availableMemoryBytes }.average().roundToLong(),
             ),
             lowMemoryAlertsLabel = snapshots.count { it.availableMemoryBytes < (it.totalMemoryBytes * 0.15f) }.toString(),
@@ -216,5 +296,35 @@ class DeviceRepository(
 
     private companion object {
         const val GB = 1024f * 1024f * 1024f
+        const val ThirtyMinutesMillis = 30 * 60 * 1000L
+        const val MemoryStableThresholdBytes = 100L * 1024 * 1024
     }
 }
+
+private val DeviceSnapshotEntity.memoryUsedBytes: Long
+    get() = (totalMemoryBytes - availableMemoryBytes).coerceAtLeast(0)
+
+private val DeviceSnapshotEntity.memoryUsageRatio: Float
+    get() = if (totalMemoryBytes > 0) {
+        (memoryUsedBytes.toFloat() / totalMemoryBytes).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+private val DeviceSnapshotEntity.memoryUsagePercent: Float
+    get() = memoryUsageRatio * 100f
+
+private val DeviceSnapshotEntity.networkTotalBytes: Long
+    get() = listOf(wifiBytes, mobileBytes)
+        .filter { it >= 0 }
+        .sum()
+
+private val DeviceSnapshotEntity.storageUsageRatio: Float
+    get() = if (storageTotalBytes > 0) {
+        ((storageTotalBytes - storageFreeBytes).toFloat() / storageTotalBytes).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+private val DeviceSnapshotEntity.storageUsagePercent: Float
+    get() = storageUsageRatio * 100f

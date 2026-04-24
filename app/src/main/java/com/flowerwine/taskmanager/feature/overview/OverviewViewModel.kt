@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flowerwine.taskmanager.core.model.OverviewDashboard
 import com.flowerwine.taskmanager.data.repository.DeviceRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class OverviewUiState(
@@ -22,16 +24,29 @@ class OverviewViewModel(
     val uiState: StateFlow<OverviewUiState> = _uiState.asStateFlow()
 
     init {
-        refresh()
+        observeDashboard()
     }
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            _uiState.value = OverviewUiState(
-                isLoading = false,
-                dashboard = deviceRepository.getOverviewDashboard(),
-            )
+            refreshOnce()
         }
+    }
+
+    private fun observeDashboard() {
+        viewModelScope.launch {
+            while (isActive) {
+                refreshOnce()
+                delay(5_000)
+            }
+        }
+    }
+
+    private suspend fun refreshOnce() {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        _uiState.value = OverviewUiState(
+            isLoading = false,
+            dashboard = deviceRepository.getOverviewDashboard(),
+        )
     }
 }

@@ -31,6 +31,7 @@ class AppContainer(context: Context) {
     val deviceRepository = DeviceRepository(
         snapshotStore = snapshotStore,
         deviceStatusDataSource = deviceStatusDataSource,
+        installedAppsDataSource = installedAppsDataSource,
         usageStatsDataSource = usageStatsDataSource,
         permissionStatusDataSource = permissionStatusDataSource,
         preferencesRepository = preferencesRepository,

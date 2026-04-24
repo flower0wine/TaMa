@@ -1,5 +1,7 @@
 package com.flowerwine.taskmanager.core.model
 
+import androidx.compose.ui.graphics.vector.ImageVector
+
 data class PermissionStatus(
     val usageAccessGranted: Boolean,
     val notificationsGranted: Boolean,
@@ -10,7 +12,15 @@ data class MetricCardValue(
     val title: String,
     val primaryLabel: String,
     val secondaryLabel: String,
+    val supportingLabel: String? = null,
+    val progress: Float? = null,
+    val trend: MetricTrend? = null,
     val accent: MetricAccent,
+)
+
+data class MetricTrend(
+    val label: String,
+    val icon: ImageVector,
 )
 
 enum class MetricAccent {

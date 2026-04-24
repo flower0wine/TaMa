@@ -14,9 +14,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Thermostat
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flowerwine.taskmanager.core.model.ToolActionType
@@ -116,7 +126,12 @@ fun ToolsScreen(
                             .background(Color(0xFFFFD700).copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(text = "💡", style = MaterialTheme.typography.bodyMedium)
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     Text(
                         text = "智能建议",
@@ -142,9 +157,11 @@ fun ToolsScreen(
                                 .background(getRecommendationColor(recommendation.title)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                text = getRecommendationIcon(recommendation.title),
-                                style = MaterialTheme.typography.titleMedium,
+                            Icon(
+                                imageVector = getRecommendationIcon(recommendation.title),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -207,9 +224,11 @@ fun ToolsScreen(
                                             .background(getShortcutColor(shortcut.title)),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        Text(
-                                            text = getShortcutIcon(shortcut.title),
-                                            style = MaterialTheme.typography.titleMedium,
+                                        Icon(
+                                            imageVector = getShortcutIcon(shortcut.title),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
                                     Text(
@@ -274,9 +293,11 @@ fun ToolsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = getPermissionIcon(item.label),
-                                style = MaterialTheme.typography.titleMedium,
+                            Icon(
+                                imageVector = getPermissionIcon(item.label),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp),
                             )
                             Text(
                                 text = item.label,
@@ -324,7 +345,12 @@ fun ToolsScreen(
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(text = "ℹ️", style = MaterialTheme.typography.bodyMedium)
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     Text(
                         text = "说明",
@@ -352,11 +378,11 @@ private fun getRecommendationColor(title: String): Color {
 }
 
 @Composable
-private fun getRecommendationIcon(title: String): String {
+private fun getRecommendationIcon(title: String): ImageVector {
     return when {
-        title.contains("温度") -> "🌡️"
-        title.contains("微信") || title.contains("应用") -> "💬"
-        else -> "📊"
+        title.contains("温度") -> Icons.Outlined.Thermostat
+        title.contains("微信") || title.contains("应用") -> Icons.Outlined.Apps
+        else -> Icons.Outlined.BarChart
     }
 }
 
@@ -374,24 +400,24 @@ private fun getShortcutColor(title: String): Color {
 }
 
 @Composable
-private fun getShortcutIcon(title: String): String {
+private fun getShortcutIcon(title: String): ImageVector {
     return when {
-        title.contains("电池") -> "🔋"
-        title.contains("应用") -> "📱"
-        title.contains("存储") -> "💾"
-        title.contains("通知") -> "🔔"
-        title.contains("使用") -> "👤"
-        title.contains("网络") -> "📊"
-        else -> "⚙️"
+        title.contains("电池") -> Icons.Outlined.BatteryChargingFull
+        title.contains("应用") -> Icons.Outlined.Apps
+        title.contains("存储") -> Icons.Outlined.Storage
+        title.contains("通知") -> Icons.Outlined.Notifications
+        title.contains("使用") -> Icons.Outlined.Person
+        title.contains("网络") -> Icons.Outlined.BarChart
+        else -> Icons.Outlined.Settings
     }
 }
 
 @Composable
-private fun getPermissionIcon(label: String): String {
+private fun getPermissionIcon(label: String): ImageVector {
     return when {
-        label.contains("使用") -> "👤"
-        label.contains("通知") -> "🔔"
-        label.contains("悬浮") -> "📱"
-        else -> "⚙️"
+        label.contains("使用") -> Icons.Outlined.Person
+        label.contains("通知") -> Icons.Outlined.Notifications
+        label.contains("悬浮") -> Icons.Outlined.Apps
+        else -> Icons.Outlined.Settings
     }
 }

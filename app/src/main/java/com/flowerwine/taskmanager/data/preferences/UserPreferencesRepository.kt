@@ -2,6 +2,7 @@ package com.flowerwine.taskmanager.data.preferences
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -17,6 +18,7 @@ class UserPreferencesRepository(private val context: Context) {
     private object Keys {
         val analysisRange = stringPreferencesKey("analysis_range")
         val appSort = stringPreferencesKey("app_sort")
+        val includeSystemApps = booleanPreferencesKey("include_system_apps")
     }
 
     val analysisRange: Flow<AnalysisRange> = context.userPreferencesDataStore.data.map { preferences ->
@@ -27,12 +29,20 @@ class UserPreferencesRepository(private val context: Context) {
         preferences.toEnum(Keys.appSort, AppSortOption.MostUsed)
     }
 
+    val includeSystemApps: Flow<Boolean> = context.userPreferencesDataStore.data.map { preferences ->
+        preferences[Keys.includeSystemApps] ?: false
+    }
+
     suspend fun setAnalysisRange(range: AnalysisRange) {
         context.userPreferencesDataStore.edit { it[Keys.analysisRange] = range.name }
     }
 
     suspend fun setAppSort(sortOption: AppSortOption) {
         context.userPreferencesDataStore.edit { it[Keys.appSort] = sortOption.name }
+    }
+
+    suspend fun setIncludeSystemApps(includeSystemApps: Boolean) {
+        context.userPreferencesDataStore.edit { it[Keys.includeSystemApps] = includeSystemApps }
     }
 }
 

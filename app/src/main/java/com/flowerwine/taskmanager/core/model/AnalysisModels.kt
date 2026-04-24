@@ -18,6 +18,7 @@ data class BarGroup(
 )
 
 data class UsageSlice(
+    val packageName: String,
     val label: String,
     val value: Float,
     val displayValue: String,

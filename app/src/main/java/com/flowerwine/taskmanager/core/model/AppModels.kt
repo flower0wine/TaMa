@@ -9,6 +9,7 @@ enum class AppSortOption(val label: String) {
 data class AppListItem(
     val packageName: String,
     val displayName: String,
+    val isSystemApp: Boolean,
     val usageLabel: String,
     val lastUsedLabel: String,
     val storageLabel: String?,
@@ -33,6 +34,7 @@ data class SelectedAppSummary(
 
 data class AppsDashboard(
     val sortOption: AppSortOption,
+    val includeSystemApps: Boolean,
     val overview: AppOverviewSummary,
     val apps: List<AppListItem>,
     val selectedApp: SelectedAppSummary?,
